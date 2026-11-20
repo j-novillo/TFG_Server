@@ -1,10 +1,10 @@
-# NOMADA · Servidor (API REST)
+# NOMADA · Server (REST API)
 
-> **Trabajo de Fin de Grado (TFG)** del CFGS en Desarrollo de Aplicaciones Multiplataforma (DAM),
-> IES Francisco de Quevedo, Madrid, curso 2024‑2025.
-> **Proyecto colaborativo** de 5 personas organizado con **Scrum**.
+> **Final Degree Project (TFG)** of the Higher Vocational Training Program in Cross-Platform
+> Application Development (DAM), IES Francisco de Quevedo, Madrid, 2024‑2025.
+> **Collaborative project** by a team of 5, organized with **Scrum**.
 >
-> Este repositorio contiene el **backend**. La app Android está en
+> This repository contains the **backend**. The Android app lives in
 > **[TFG_Client](https://github.com/j-novillo/TFG_Client)**.
 
 ![Java](https://img.shields.io/badge/Java_21-ED8B00?logo=openjdk&logoColor=white)
@@ -16,108 +16,106 @@
 
 ---
 
-## ¿Qué es NOMADA?
+## What is NOMADA?
 
-NOMADA es una **red social de notas geolocalizadas**. Cada usuario puede dejar notas asociadas a un
-punto del mapa (un restaurante, un paisaje, un monumento, un evento…), valorarlas, hacerlas
-públicas, privadas o visibles solo para sus seguidores, y descubrir las notas que otras personas
-han dejado a su alrededor.
+NOMADA is a **social network of geolocated notes**. Users can leave notes pinned to a spot on the
+map (a restaurant, a landscape, a monument, an event…), rate them, make them public, private or
+visible only to their followers, and discover the notes other people have left around them.
 
-La idea surge de una pregunta sencilla: *¿y si los recuerdos y recomendaciones de la gente
-estuvieran ligados al lugar donde ocurrieron?* NOMADA lo resuelve combinando un mapa interactivo
-con funciones sociales (seguir usuarios, likes, guardados).
+The idea comes from a simple question: *what if people's memories and recommendations were tied
+to the place where they happened?* NOMADA answers it by combining an interactive map with social
+features (following users, likes, saved notes).
 
-El sistema tiene dos piezas:
+The system has two parts:
 
 ```
 ┌─────────────────────────┐   HTTPS + JWT   ┌──────────────────────────┐      ┌─────────┐
-│  App Android (Kotlin)   │ ──────────────► │  API REST (Spring Boot)  │ ───► │  MySQL  │
-│  Jetpack Compose · MVVM │ ◄────────────── │  este repositorio        │      └─────────┘
+│  Android app (Kotlin)   │ ──────────────► │  REST API (Spring Boot)  │ ───► │  MySQL  │
+│  Jetpack Compose · MVVM │ ◄────────────── │  this repository         │      └─────────┘
 └──────────┬──────────────┘      JSON       └────────────┬─────────────┘
            │                                             │ SMTP
            ▼                                             ▼
-   Firebase (Auth, Storage,                    Email de verificación
-   Crashlytics) · Google Maps                  de la cuenta
+   Firebase (Auth, Storage,                    Account verification
+   Crashlytics) · Google Maps                  email
 ```
 
-## Qué hace el servidor
+## What the server does
 
-- **Autenticación y autorización**: registro, login y renovación de sesión con **JWT**
-  (token de acceso de 30 min y token de refresco de 7 días), contraseñas hasheadas con BCrypt y un filtro de
-  seguridad propio sobre Spring Security.
-- **Verificación de cuenta por email**: al registrarse, el usuario recibe un correo con un
-  enlace de confirmación. La cuenta no se activa hasta que lo pulsa.
-- **Notas geolocalizadas** con herencia de tipos (*clásica, evento, histórica, gastronómica,
-  paisaje, cultural*): crear, borrar, valorar (1‑10), consultar por área del mapa, por tipo,
-  por antigüedad u ordenadas.
-- **Privacidad por nota**: `PUBLIC`, `FOLLOWERS` o `PRIVATE`.
-- **Red social**: seguir y dejar de seguir, seguidores y seguidos, likes y notas guardadas.
-- **Perfiles de usuario** y búsqueda de otros usuarios.
-- **Errores de dominio tipados** (nota no encontrada, nota ajena, valoración fuera de rango,
-  intento de seguirse a uno mismo…) que se traducen a respuestas HTTP coherentes con un `ApiError` común.
+- **Authentication and authorization**: sign-up, login and session renewal with **JWT**
+  (30-minute access token and 7-day refresh token), passwords hashed with BCrypt and a custom
+  security filter on top of Spring Security.
+- **Account verification by email**: after signing up, users receive an email with a
+  confirmation link. The account is not activated until they click it.
+- **Geolocated notes** with type inheritance (*classic, event, historical, food, landscape,
+  cultural*): create, delete, rate (1‑10), and query by map area, by type, by age or sorted.
+- **Per-note privacy**: `PUBLIC`, `FOLLOWERS` or `PRIVATE`.
+- **Social network**: follow and unfollow, followers and following, likes and saved notes.
+- **User profiles** and user search.
+- **Typed domain errors** (note not found, note owned by someone else, rating out of range,
+  trying to follow yourself…) translated into consistent HTTP responses with a shared `ApiError`.
 
-## Arquitectura
+## Architecture
 
-Arquitectura **en capas**, separando presentación, dominio y acceso a datos:
+**Layered** architecture, separating presentation, domain and data access:
 
 ```
 src/main/java/org/server
-├── ui/            # Controladores REST y DTOs (contrato con el cliente)
+├── ui/            # REST controllers and DTOs (contract with the client)
 │   ├── controllers/   Authentication, Notas, Social, Follow, User
 │   └── model/         NoteDTO, EventNoteDTO, NoteMapDTO, UserDTO...
-├── domain/        # Lógica de negocio
+├── domain/        # Business logic
 │   ├── service/       AuthenticationService, NoteService, SocialService, FollowService, UserService
-│   └── errors/        Excepciones de dominio + ExceptionHandlers (@ControllerAdvice)
-├── dao/           # Persistencia con Spring Data JPA
-│   ├── model/         Entidades: User, Note (+ subtipos), likes, guardados, follows
+│   └── errors/        Domain exceptions + ExceptionHandlers (@ControllerAdvice)
+├── dao/           # Persistence with Spring Data JPA
+│   ├── model/         Entities: User, Note (+ subtypes), likes, saved notes, follows
 │   └── repositories/
-├── security/      # Spring Security: configuración, filtro de tokens y servicio JWT
-├── common/        # Configuración y mapeo entidad ↔ DTO
-└── utils/         # Envío de emails (MailComponent)
+├── security/      # Spring Security: configuration, token filter and JWT service
+├── common/        # Configuration and entity ↔ DTO mapping
+└── utils/         # Email sending (MailComponent)
 ```
 
-**Decisiones técnicas destacables**
+**Notable technical decisions**
 
-- **Herencia JPA (single table)** para los tipos de nota: una sola tabla `notes` con
-  discriminador `note_type`. Los eventos añaden fechas de inicio y fin.
-- **El usuario autenticado se obtiene siempre del `SecurityContext`**, nunca de un parámetro
-  de la petición, para que nadie pueda actuar en nombre de otro usuario.
-- **Los DTOs no exponen datos sensibles**: la contraseña se eliminó del `UserDTO`.
-- **Identificadores UUID** para los usuarios.
+- **JPA single-table inheritance** for note types: a single `notes` table with a `note_type`
+  discriminator. Events add start and end dates.
+- **The authenticated user is always taken from the `SecurityContext`**, never from a request
+  parameter, so nobody can act on behalf of another user.
+- **DTOs don't expose sensitive data**: the password was removed from `UserDTO`.
+- **UUID identifiers** for users.
 
-## API (resumen)
+## API (summary)
 
-| Recurso | Endpoints principales |
+| Resource | Main endpoints |
 |---|---|
-| Autenticación | `POST /login` · `POST /register` · `GET /refresh` · `GET /confirm` · `GET /firebase_id` |
-| Notas `/notes` | `GET /all` · `GET /{noteId}` · `GET /area` · `GET /type` · `GET /sorted` · `GET /antiquity` · `POST /addNota` · `PATCH /{id}/rate` · `DELETE /{id}` |
+| Authentication | `POST /login` · `POST /register` · `GET /refresh` · `GET /confirm` · `GET /firebase_id` |
+| Notes `/notes` | `GET /all` · `GET /{noteId}` · `GET /area` · `GET /type` · `GET /sorted` · `GET /antiquity` · `POST /addNota` · `PATCH /{id}/rate` · `DELETE /{id}` |
 | Social `/social` | `POST /like` · `DELETE /liked` · `GET /likes` · `GET /saves` · `POST /saves` · `DELETE /saves` |
-| Seguidores `/users` | `POST /follow` · `DELETE /unfollow` · `GET /followers` · `GET /following` · `GET /is-following` · `GET /{username}/followers` · `GET /{username}/following` |
-| Usuarios `/user` | `GET /info/{username}` · `GET /notes` · `GET /notes/{username}` |
+| Followers `/users` | `POST /follow` · `DELETE /unfollow` · `GET /followers` · `GET /following` · `GET /is-following` · `GET /{username}/followers` · `GET /{username}/following` |
+| Users `/user` | `GET /info/{username}` · `GET /notes` · `GET /notes/{username}` |
 
-## Calidad y despliegue
+## Quality and deployment
 
-- **Tests unitarios** con **JUnit 5 + Mockito** para todos los servicios de dominio
+- **Unit tests** with **JUnit 5 + Mockito** for every domain service
   (`AuthenticationService`, `NoteService`, `SocialService`, `FollowService`, `UserService`),
-  más colecciones `.http` para probar los flujos de autenticación a mano.
-- **Docker**: `Dockerfile` multi‑stage (compila con Maven + JDK 21 y ejecuta sobre un JRE 21 ligero).
-- **CI/CD con GitHub Actions**: cada push a `main` construye la imagen y la publica en Docker Hub.
-- En producción la API estaba desplegada en el servidor del centro, con la app consumiéndola por HTTPS.
+  plus `.http` collections to test the authentication flows by hand.
+- **Docker**: multi-stage `Dockerfile` (builds with Maven + JDK 21 and runs on a lightweight JRE 21).
+- **CI/CD with GitHub Actions**: every push to `main` builds the image and publishes it to Docker Hub.
+- In production the API was deployed on the school's server, with the app consuming it over HTTPS.
 
-## Cómo ejecutarlo
+## How to run it
 
-Requisitos: **JDK 21** y una base de datos **MySQL**. El esquema está en
-`src/main/resources/schema.sql` y hay datos de ejemplo en `data.sql`.
+Requirements: **JDK 21** and a **MySQL** database. The schema is in
+`src/main/resources/schema.sql` and there is sample data in `data.sql`.
 
-1. Configura en `src/main/resources/application.properties` (o mediante variables de entorno)
-   la conexión a MySQL, la clave de firma de los JWT y las credenciales SMTP.
-2. Arranca la aplicación:
+1. In `src/main/resources/application.properties` (or through environment variables), set the
+   MySQL connection, the JWT signing key and the SMTP credentials.
+2. Start the application:
 
    ```bash
    ./mvnw spring-boot:run
    ```
 
-   O con Docker:
+   Or with Docker:
 
    ```bash
    docker build -t nomada-server .
@@ -130,12 +128,12 @@ Requisitos: **JDK 21** y una base de datos **MySQL**. El esquema está en
    ./mvnw test
    ```
 
-## Equipo y metodología
+## Team and methodology
 
-Proyecto desarrollado por **Jorge Novillo**, **Adrián Saavedra**, **Marcos Sánchez**,
-**Mario Valiente** y **Aitor García**, siguiendo **Scrum** (backlog de historias de usuario,
-sprints, planning, reviews y retrospectivas) y un flujo **GitFlow** con *feature branches*
-y *Pull Requests* revisadas por el equipo.
+Built by **Jorge Novillo**, **Adrián Saavedra**, **Marcos Sánchez**, **Mario Valiente** and
+**Aitor García**, following **Scrum** (user-story backlog, sprints, planning, reviews and
+retrospectives, managed in Taiga) and a **GitFlow** workflow with feature branches and
+Pull Requests reviewed by the team.
 
-En **[docs/METODOLOGIA.md](docs/METODOLOGIA.md)** se explica cómo nos organizamos y qué parte
-desarrolló cada uno.
+**[docs/METHODOLOGY.md](docs/METHODOLOGY.md)** explains how we organized ourselves and what each
+person worked on.
